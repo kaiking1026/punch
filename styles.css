@@ -698,12 +698,27 @@ button {
   }
 
   .stats-grid,
-  .habit-grid,
-  .sheet-habit-grid,
-  .selector-grid,
-  .shape-grid {
-    grid-template-columns: 1fr;
-  }
+.habit-grid,
+.sheet-habit-grid {
+  grid-template-columns: 1fr;
+}
+
+.selector-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.shape-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.selector-button {
+  min-height: 48px;
+  padding: 8px;
+}
+
+.shape-choice {
+  font-size: 14px;
+}
 
   .calendar-head {
     display: grid;
