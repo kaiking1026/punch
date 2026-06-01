@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f36c4f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="description" content="一个离线可用的个人打卡与日程记录 PWA。">
+  <title>今日打卡</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/app-icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <div class="page-switcher" id="pageSwitcher">
+      <button type="button" class="page-tab is-active" data-page-index="0">打卡</button>
+      <button type="button" class="page-tab" data-page-index="1">日历</button>
+    </div>
+
+    <div class="swipe-hint">
+      <span class="hint-dot is-active"></span>
+      <span class="hint-dot"></span>
+      <span>可点上方切换，也可右滑查看日历</span>
+    </div>
+
+    <main class="pages" id="pages">
+      <section class="page">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">第一页</p>
+            <h1>我的打卡</h1>
+            <p class="hero-copy">点击项目就能打卡。右滑到第二页，再按日期补打卡或安排日程。</p>
+          </div>
+          <button type="button" class="icon-button" id="openHabitModalButton" aria-label="新建打卡项目">+</button>
+        </header>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <p class="panel-kicker">今日概况</p>
+              <h2 id="todayLabel"></h2>
+            </div>
+            <div class="badge" id="installHint">可加到手机桌面使用</div>
+          </div>
+
+          <div class="stats-grid">
+            <article class="stat-card">
+              <span>打卡项目</span>
+              <strong id="habitCount">0</strong>
+            </article>
+            <article class="stat-card">
+              <span>本周打卡</span>
+              <strong id="weekCheckinCount">0</strong>
+            </article>
+            <article class="stat-card">
+              <span>待办日程</span>
+              <strong id="todoCount">0</strong>
+            </article>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <p class="panel-kicker">点一下就记上</p>
+              <h2>打卡项目</h2>
+            </div>
+          </div>
+          <div id="habitGrid" class="habit-grid"></div>
+        </section>
+      </section>
+
+      <section class="page">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">第二页</p>
+            <h1>日历表</h1>
+            <p class="hero-copy">日期右侧是打卡图形标记，日程内容直接显示在日期里。点日期可补打卡和新建日程。</p>
+          </div>
+          <button type="button" class="icon-button subtle-button" id="jumpTodayButton" aria-label="回到今天">今</button>
+        </header>
+
+        <section class="panel">
+          <div class="calendar-head">
+            <button type="button" class="button button-small button-ghost" id="prevMonthButton">上个月</button>
+            <strong id="calendarMonthLabel"></strong>
+            <button type="button" class="button button-small button-ghost" id="nextMonthButton">下个月</button>
+          </div>
+
+          <div class="calendar-weekdays">
+            <span>一</span>
+            <span>二</span>
+            <span>三</span>
+            <span>四</span>
+            <span>五</span>
+            <span>六</span>
+            <span>日</span>
+          </div>
+
+          <div class="calendar-grid" id="calendarGrid"></div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal" id="habitModal" hidden>
+    <div class="modal-backdrop" data-close-habit-modal></div>
+    <div class="modal-panel">
+      <div class="panel-head compact-head">
+        <div>
+          <p class="panel-kicker">新建项目</p>
+          <h2>设置打卡标记</h2>
+        </div>
+        <button type="button" class="close-button" data-close-habit-modal aria-label="关闭">×</button>
+      </div>
+
+      <form id="habitForm" class="stack">
+        <label class="field">
+          <span>项目名称</span>
+          <input id="habitNameInput" type="text" maxlength="40" placeholder="比如：背单词、健身、写日记" required>
+        </label>
+
+        <label class="field">
+          <span>项目说明</span>
+          <textarea id="habitTargetInput" rows="2" maxlength="100" placeholder="可选，写一点你想坚持的标准"></textarea>
+        </label>
+
+        <div class="field">
+          <span>选择颜色</span>
+          <div class="selector-grid" id="colorSelector"></div>
+        </div>
+
+        <div class="field">
+          <span>选择图形</span>
+          <div class="selector-grid shape-grid" id="shapeSelector"></div>
+        </div>
+
+        <button type="submit" class="button button-primary">保存打卡项目</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal" id="daySheet" hidden>
+    <div class="modal-backdrop" data-close-day-sheet></div>
+    <div class="sheet-panel">
+      <div class="panel-head compact-head">
+        <div>
+          <p class="panel-kicker">按日期操作</p>
+          <h2 id="selectedDateLabel">当天明细</h2>
+        </div>
+        <button type="button" class="close-button" data-close-day-sheet aria-label="关闭">×</button>
+      </div>
+
+      <div class="sheet-scroll">
+        <div class="section-block">
+          <div class="panel-head compact-head">
+            <div>
+              <p class="panel-kicker">补打卡</p>
+              <h2>点项目立即记录</h2>
+            </div>
+            <div class="badge" id="selectedDateSummary">默认空白</div>
+          </div>
+          <label class="field">
+            <span>这次补充说明</span>
+            <textarea id="dayCheckinNoteInput" rows="2" maxlength="120" placeholder="可选，写一点这次打卡的内容"></textarea>
+          </label>
+          <div class="sheet-habit-grid" id="dayHabitButtons"></div>
+        </div>
+
+        <div class="section-block">
+          <div class="panel-head compact-head">
+            <div>
+              <p class="panel-kicker">新增日程</p>
+              <h2>写进这一天</h2>
+            </div>
+          </div>
+
+          <form id="dayScheduleForm" class="stack">
+            <label class="field">
+              <span>事项名称</span>
+              <input id="dayScheduleTitleInput" type="text" maxlength="50" placeholder="比如：晚上 8 点复盘" required>
+            </label>
+
+            <label class="field">
+              <span>时间</span>
+              <input id="dayScheduleTimeInput" type="time">
+            </label>
+
+            <label class="field">
+              <span>备注</span>
+              <textarea id="dayScheduleNoteInput" rows="2" maxlength="120" placeholder="可选，写一点提醒自己的内容"></textarea>
+            </label>
+
+            <button type="submit" class="button button-primary">加入这一天</button>
+          </form>
+        </div>
+
+        <div class="section-block">
+          <div class="panel-head compact-head">
+            <div>
+              <p class="panel-kicker">当天已有内容</p>
+              <h2>记录明细</h2>
+            </div>
+          </div>
+          <div id="selectedDateList" class="list"></div>
+        </div>
+
+        <div class="section-block">
+          <div class="panel-head compact-head">
+            <div>
+              <p class="panel-kicker">备份一下更安心</p>
+              <h2>数据导入导出</h2>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button type="button" class="button button-primary" id="exportButton">导出数据</button>
+            <button type="button" class="button button-ghost" id="importButton">导入数据</button>
+            <input id="importFileInput" type="file" accept="application/json" hidden>
+          </div>
+          <p class="helper">数据默认保存在当前设备浏览器里。换手机或清理浏览器数据前，先导出一份备份。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" hidden></div>
+
+  <template id="habitCardTemplate">
+    <button type="button" class="habit-card">
+      <div class="habit-card-head">
+        <span class="habit-marker"></span>
+        <span class="habit-last"></span>
+      </div>
+      <div class="habit-card-main">
+        <h3 class="habit-title"></h3>
+        <p class="habit-target"></p>
+      </div>
+      <p class="helper compact habit-total"></p>
+    </button>
+  </template>
+
+  <template id="detailItemTemplate">
+    <article class="detail-item">
+      <div class="schedule-main">
+        <div class="schedule-topline">
+          <div class="detail-title-wrap">
+            <span class="detail-type"></span>
+            <h3 class="schedule-title"></h3>
+          </div>
+          <span class="schedule-date"></span>
+        </div>
+        <p class="schedule-note"></p>
+      </div>
+      <div class="schedule-actions detail-actions"></div>
+    </article>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>
