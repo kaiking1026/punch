@@ -36,7 +36,7 @@
           <button type="button" class="icon-button" id="openHabitModalButton" aria-label="新建打卡项目">+</button>
         </header>
 
-        <section class="panel">
+        <section class="panel calendar-panel">
           <div class="panel-head">
             <div>
               <p class="panel-kicker">今日概况</p>
@@ -44,21 +44,7 @@
             </div>
             <div class="badge" id="installHint">可加到手机桌面使用</div>
           </div>
-
-          <div class="stats-grid">
-            <article class="stat-card">
-              <span>打卡项目</span>
-              <strong id="habitCount">0</strong>
-            </article>
-            <article class="stat-card">
-              <span>本周打卡</span>
-              <strong id="weekCheckinCount">0</strong>
-            </article>
-            <article class="stat-card">
-              <span>待办日程</span>
-              <strong id="todoCount">0</strong>
-            </article>
-          </div>
+          <div id="todayOverviewList" class="today-overview"></div>
         </section>
 
         <section class="panel">
@@ -83,13 +69,27 @@
         </header>
 
         <section class="panel">
+          <div class="view-switcher" id="calendarViewSwitcher">
+            <button type="button" class="view-tab is-active" data-view="month">月</button>
+            <button type="button" class="view-tab" data-view="week">周</button>
+          </div>
+
           <div class="calendar-head">
             <button type="button" class="button button-small button-ghost" id="prevMonthButton">上个月</button>
             <strong id="calendarMonthLabel"></strong>
             <button type="button" class="button button-small button-ghost" id="nextMonthButton">下个月</button>
           </div>
 
-          <div class="calendar-weekdays">
+          <div class="calendar-weekdays" id="monthWeekdays">
+            <span>一</span>
+            <span>二</span>
+            <span>三</span>
+            <span>四</span>
+            <span>五</span>
+            <span>六</span>
+            <span>日</span>
+          </div>
+          <div class="calendar-weekdays" id="weekWeekdays" hidden>
             <span>一</span>
             <span>二</span>
             <span>三</span>
@@ -100,6 +100,7 @@
           </div>
 
           <div class="calendar-grid" id="calendarGrid"></div>
+          <div class="week-board" id="weekBoard" hidden></div>
         </section>
       </section>
     </main>

@@ -15,6 +15,11 @@ const MONTH_FORMATTER = new Intl.DateTimeFormat("zh-CN", {
   year: "numeric",
   month: "long",
 });
+const WEEKDAY_FORMATTER = new Intl.DateTimeFormat("zh-CN", {
+  month: "numeric",
+  day: "numeric",
+  weekday: "short",
+});
 const TEXT = {
   installFileMode: "\u5f53\u524d\u662f\u672c\u5730\u6587\u4ef6\u6a21\u5f0f\uff0c\u90e8\u7f72\u540e\u624d\u53ef\u5b89\u88c5\u5230\u684c\u9762",
   installIos: "iPhone \u4e0a\u53ef\u7528 Safari \u52a0\u5230\u4e3b\u5c4f\u5e55",
@@ -24,6 +29,7 @@ const TEXT = {
   defaultHabitTarget: "\u6ca1\u6709\u586b\u5199\u9879\u76ee\u8bf4\u660e\u3002",
   noHabitYet: "\u8fd8\u6ca1\u6709\u6253\u5361\u9879\u76ee\uff0c\u70b9\u53f3\u4e0a\u89d2\u7684 + \u65b0\u5efa\u4e00\u4e2a\u5427\u3002",
   noDayEntries: "\u8fd9\u4e00\u5929\u8fd8\u6ca1\u6709\u8bb0\u5f55\u3002",
+  noTodayEntries: "\u4eca\u5929\u8fd8\u6ca1\u6709\u6253\u5361\u6216\u65e5\u7a0b\u3002",
   tapDatePrompt: "\u70b9\u4e00\u4e2a\u65e5\u671f\uff0c\u5c31\u53ef\u8865\u6253\u5361\u6216\u65b0\u5efa\u65e5\u7a0b\u3002",
   addHabitFirst: "\u8bf7\u5148\u65b0\u5efa\u4e00\u4e2a\u6253\u5361\u9879\u76ee\u3002",
   addedHabit: "\u6253\u5361\u9879\u76ee\u5df2\u521b\u5efa",
@@ -45,11 +51,19 @@ const TEXT = {
   markDone: "\u6807\u8bb0\u5b8c\u6210",
   delete: "\u5220\u9664",
   scheduleDone: "\u5df2\u5b8c\u6210",
-  scheduleTodo: "\u5f85\u529e",
+  todayCheckin: "\u4eca\u5929\u6253\u5361",
+  todaySchedule: "\u4eca\u5929\u65e5\u7a0b",
   lastCheckedStart: "\u4e0a\u6b21\u6253\u5361 ",
   neverChecked: "\u8fd8\u6ca1\u6709\u6253\u5361\u8bb0\u5f55",
   migratedHabitName: "\u65e7\u7248\u6bcf\u65e5\u6253\u5361",
   migratedHabitTarget: "\u4ece\u65e7\u7248\u672c\u81ea\u52a8\u8fc1\u79fb\u800c\u6765",
+  allDay: "\u5168\u5929",
+  monthView: "\u6708",
+  weekView: "\u5468",
+  prevMonth: "\u4e0a\u4e2a\u6708",
+  nextMonth: "\u4e0b\u4e2a\u6708",
+  prevWeek: "\u4e0a\u4e00\u5468",
+  nextWeek: "\u4e0b\u4e00\u5468",
 };
 const HABIT_COLORS = [
   { id: "coral", label: "\u73ca\u745a", value: "#ef8f7b", soft: "#f9ded6" },
@@ -64,6 +78,7 @@ const HABIT_SHAPES = [
   { id: "diamond", label: "\u83f1\u5f62" },
   { id: "triangle", label: "\u4e09\u89d2" },
   { id: "star", label: "\u661f\u5f62" },
+  { id: "heart", label: "\u7231\u5fc3" },
 ];
 
 const el = {
@@ -71,9 +86,7 @@ const el = {
   pageSwitcher: document.querySelector("#pageSwitcher"),
   todayLabel: document.querySelector("#todayLabel"),
   installHint: document.querySelector("#installHint"),
-  weekCheckinCount: document.querySelector("#weekCheckinCount"),
-  habitCount: document.querySelector("#habitCount"),
-  todoCount: document.querySelector("#todoCount"),
+  todayOverviewList: document.querySelector("#todayOverviewList"),
   habitGrid: document.querySelector("#habitGrid"),
   openHabitModalButton: document.querySelector("#openHabitModalButton"),
   habitModal: document.querySelector("#habitModal"),
@@ -85,8 +98,12 @@ const el = {
   jumpTodayButton: document.querySelector("#jumpTodayButton"),
   prevMonthButton: document.querySelector("#prevMonthButton"),
   nextMonthButton: document.querySelector("#nextMonthButton"),
+  calendarViewSwitcher: document.querySelector("#calendarViewSwitcher"),
   calendarMonthLabel: document.querySelector("#calendarMonthLabel"),
+  monthWeekdays: document.querySelector("#monthWeekdays"),
+  weekWeekdays: document.querySelector("#weekWeekdays"),
   calendarGrid: document.querySelector("#calendarGrid"),
+  weekBoard: document.querySelector("#weekBoard"),
   daySheet: document.querySelector("#daySheet"),
   selectedDateLabel: document.querySelector("#selectedDateLabel"),
   selectedDateSummary: document.querySelector("#selectedDateSummary"),
@@ -111,6 +128,7 @@ let selectedDateKey = "";
 let selectedColorId = HABIT_COLORS[0].id;
 let selectedShapeId = HABIT_SHAPES[0].id;
 let toastTimer = 0;
+let calendarView = "month";
 
 boot();
 
@@ -131,6 +149,13 @@ function bindEvents() {
   });
 
   el.pages.addEventListener("scroll", syncPageSwitcher);
+  el.calendarViewSwitcher.querySelectorAll("[data-view]").forEach((button) => {
+    button.addEventListener("click", () => {
+      calendarView = button.dataset.view;
+      updateCalendarViewTabs();
+      renderCalendar();
+    });
+  });
   el.openHabitModalButton.addEventListener("click", openHabitModal);
   el.jumpTodayButton.addEventListener("click", () => {
     const now = new Date();
@@ -142,12 +167,16 @@ function bindEvents() {
   });
 
   el.prevMonthButton.addEventListener("click", () => {
-    calendarCursor = new Date(calendarCursor.getFullYear(), calendarCursor.getMonth() - 1, 1);
+    calendarCursor = calendarView === "month"
+      ? new Date(calendarCursor.getFullYear(), calendarCursor.getMonth() - 1, 1)
+      : addDays(getWeekStart(calendarCursor), -7);
     renderCalendar();
   });
 
   el.nextMonthButton.addEventListener("click", () => {
-    calendarCursor = new Date(calendarCursor.getFullYear(), calendarCursor.getMonth() + 1, 1);
+    calendarCursor = calendarView === "month"
+      ? new Date(calendarCursor.getFullYear(), calendarCursor.getMonth() + 1, 1)
+      : addDays(getWeekStart(calendarCursor), 7);
     renderCalendar();
   });
 
@@ -175,8 +204,9 @@ function bindEvents() {
 }
 
 function render() {
-  renderStats();
+  renderTodayOverview();
   renderHabitGrid();
+  updateCalendarViewTabs();
   renderCalendar();
   syncPageSwitcher();
   if (selectedDateKey && !el.daySheet.hidden) {
@@ -184,10 +214,38 @@ function render() {
   }
 }
 
-function renderStats() {
-  el.habitCount.textContent = String(getActiveHabits().length);
-  el.weekCheckinCount.textContent = String(countCheckinsWithinDays(7));
-  el.todoCount.textContent = String(state.schedules.filter((item) => !item.done).length);
+function renderTodayOverview() {
+  const todayKey = getDateKey(new Date());
+  const entries = getEntriesForDate(todayKey);
+  el.todayOverviewList.innerHTML = "";
+
+  if (!entries.length) {
+    appendEmptyMessage(el.todayOverviewList, TEXT.noTodayEntries);
+    return;
+  }
+
+  entries.forEach((entry) => {
+    const item = document.createElement("article");
+    const tag = document.createElement("span");
+    const title = document.createElement("strong");
+    const meta = document.createElement("span");
+    const note = document.createElement("p");
+
+    item.className = "today-item";
+    tag.className = `today-tag${entry.kind === "checkin" ? " is-checkin" : " is-schedule"}`;
+    tag.textContent = entry.kind === "checkin" ? TEXT.todayCheckin : TEXT.todaySchedule;
+    title.textContent = entry.title;
+    meta.className = "today-meta";
+    meta.textContent = entry.timeLabel;
+    note.className = "today-note";
+    note.textContent = entry.note || TEXT.noNote;
+
+    item.appendChild(tag);
+    item.appendChild(title);
+    item.appendChild(meta);
+    item.appendChild(note);
+    el.todayOverviewList.appendChild(item);
+  });
 }
 
 function renderHabitGrid() {
@@ -216,6 +274,7 @@ function renderHabitGrid() {
 
     card.addEventListener("click", () => {
       recordCheckin(habit.id, "", getDateKey(new Date()));
+      render();
       showToast(TEXT.checkedIn);
     });
 
@@ -231,6 +290,18 @@ function renderHabitGrid() {
 }
 
 function renderCalendar() {
+  if (calendarView === "week") {
+    renderWeekBoard();
+    return;
+  }
+
+  el.monthWeekdays.hidden = false;
+  el.weekWeekdays.hidden = true;
+  el.calendarGrid.hidden = false;
+  el.weekBoard.hidden = true;
+  el.prevMonthButton.textContent = TEXT.prevMonth;
+  el.nextMonthButton.textContent = TEXT.nextMonth;
+
   const year = calendarCursor.getFullYear();
   const month = calendarCursor.getMonth();
   const firstDay = new Date(year, month, 1);
@@ -278,16 +349,16 @@ function renderCalendar() {
     });
 
     scheduleColumn.className = "calendar-schedule-column";
-    summary.schedules.slice(0, 2).forEach((schedule) => {
+    summary.schedules.slice(0, 3).forEach((schedule) => {
       const item = document.createElement("span");
       item.className = `calendar-schedule-item${schedule.done ? " is-done" : ""}`;
       item.textContent = schedule.title;
       scheduleColumn.appendChild(item);
     });
-    if (summary.schedules.length > 2) {
+    if (summary.schedules.length > 3) {
       const more = document.createElement("span");
       more.className = "calendar-schedule-more";
-      more.textContent = `+${summary.schedules.length - 2}`;
+      more.textContent = `+${summary.schedules.length - 3}`;
       scheduleColumn.appendChild(more);
     }
 
@@ -310,6 +381,78 @@ function renderCalendar() {
   for (let index = 0; index < trailingBlanks; index += 1) {
     el.calendarGrid.appendChild(createBlankCalendarCell());
   }
+}
+
+function renderWeekBoard() {
+  el.monthWeekdays.hidden = true;
+  el.weekWeekdays.hidden = false;
+  el.calendarGrid.hidden = true;
+  el.weekBoard.hidden = false;
+  el.prevMonthButton.textContent = TEXT.prevWeek;
+  el.nextMonthButton.textContent = TEXT.nextWeek;
+
+  const weekDates = getWeekDates(calendarCursor);
+  el.calendarMonthLabel.textContent = `${formatShortDate(weekDates[0])} - ${formatShortDate(weekDates[6])}`;
+  el.weekBoard.innerHTML = "";
+
+  const grid = document.createElement("div");
+  grid.className = "week-grid";
+
+  weekDates.forEach((date) => {
+    const dateKey = getDateKey(date);
+    const summary = getDateSummary(dateKey);
+    const dayCard = document.createElement("button");
+    const head = document.createElement("div");
+    const title = document.createElement("strong");
+    const markerBar = document.createElement("div");
+    const scheduleColumn = document.createElement("div");
+
+    dayCard.type = "button";
+    dayCard.className = "calendar-cell week-calendar-cell";
+    if (dateKey === selectedDateKey) {
+      dayCard.classList.add("is-selected");
+    }
+    if (dateKey === getDateKey(new Date())) {
+      dayCard.classList.add("is-today");
+    }
+
+    head.className = "week-day-head";
+    title.textContent = String(date.getDate());
+    markerBar.className = "week-day-markers";
+    summary.markers.forEach((habit) => {
+      const marker = document.createElement("span");
+      applyHabitMarkerStyle(marker, habit, "mini");
+      marker.classList.add("calendar-side-marker");
+      markerBar.appendChild(marker);
+    });
+    head.appendChild(title);
+    head.appendChild(markerBar);
+
+    scheduleColumn.className = "calendar-schedule-column";
+    summary.schedules.slice(0, 3).forEach((schedule) => {
+      const item = document.createElement("span");
+      item.className = `calendar-schedule-item${schedule.done ? " is-done" : ""}`;
+      item.textContent = schedule.title;
+      scheduleColumn.appendChild(item);
+    });
+    if (summary.schedules.length > 3) {
+      const more = document.createElement("span");
+      more.className = "calendar-schedule-more";
+      more.textContent = `+${summary.schedules.length - 3}`;
+      scheduleColumn.appendChild(more);
+    }
+
+    dayCard.appendChild(head);
+    dayCard.appendChild(scheduleColumn);
+    dayCard.addEventListener("click", () => {
+      selectedDateKey = dateKey;
+      renderWeekBoard();
+      openDaySheet(dateKey);
+    });
+    grid.appendChild(dayCard);
+  });
+
+  el.weekBoard.appendChild(grid);
 }
 
 function renderDaySheet() {
@@ -344,7 +487,7 @@ function renderDayHabitButtons() {
       recordCheckin(habit.id, el.dayCheckinNoteInput.value.trim(), selectedDateKey);
       el.dayCheckinNoteInput.value = "";
       renderDaySheet();
-      renderStats();
+      renderTodayOverview();
       renderHabitGrid();
       renderCalendar();
       showToast(TEXT.checkedIn);
@@ -513,7 +656,7 @@ function createScheduleForSelectedDate() {
   saveState();
   el.dayScheduleForm.reset();
   renderDaySheet();
-  renderStats();
+  renderTodayOverview();
   renderCalendar();
   showToast(TEXT.addedSchedule);
 }
@@ -601,7 +744,9 @@ function getDateSummary(dateKey) {
     markers: [...habitIds]
       .map((habitId) => state.habits.find((habit) => habit.id === habitId))
       .filter(Boolean),
-    schedules: state.schedules.filter((entry) => entry.date === dateKey),
+    schedules: state.schedules
+      .filter((entry) => entry.date === dateKey)
+      .sort((left, right) => `${left.time || "23:59"}-${left.title}`.localeCompare(`${right.time || "23:59"}-${right.title}`)),
   };
 }
 
@@ -624,7 +769,7 @@ function getEntriesForDate(dateKey) {
       id: entry.id,
       title: entry.title,
       note: entry.note,
-      timeLabel: entry.time ? `${entry.time} ${entry.done ? TEXT.scheduleDone : TEXT.scheduleTodo}` : (entry.done ? TEXT.scheduleDone : TEXT.scheduleTodo),
+      timeLabel: entry.time || TEXT.allDay,
       sortValue: new Date(`${entry.date}T${entry.time || "23:59"}:00`).getTime(),
       done: entry.done,
     }));
@@ -854,6 +999,12 @@ function showToast(message) {
   }, 1400);
 }
 
+function updateCalendarViewTabs() {
+  el.calendarViewSwitcher.querySelectorAll("[data-view]").forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.view === calendarView);
+  });
+}
+
 function switchToPage(index) {
   const width = el.pages.clientWidth;
   el.pages.scrollTo({
@@ -875,6 +1026,28 @@ function updatePageTabs(activeIndex) {
   });
 }
 
+function getWeekStart(date) {
+  const base = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const day = (base.getDay() + 6) % 7;
+  base.setDate(base.getDate() - day);
+  return base;
+}
+
+function getWeekDates(date) {
+  const start = getWeekStart(date);
+  return Array.from({ length: 7 }, (_, index) => addDays(start, index));
+}
+
+function addDays(date, amount) {
+  const next = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  next.setDate(next.getDate() + amount);
+  return next;
+}
+
+function formatShortDate(date) {
+  return `${date.getMonth() + 1}/${date.getDate()}`;
+}
+
 function getDateKey(date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -888,7 +1061,16 @@ function registerServiceWorker() {
   }
 
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./sw.js").catch(() => {
+    navigator.serviceWorker.register("./sw.js").then(() => {
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (refreshing) {
+          return;
+        }
+        refreshing = true;
+        window.location.reload();
+      });
+    }).catch(() => {
       // 忽略注册失败，页面主体仍然可用。
     });
   });
