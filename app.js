@@ -50,6 +50,9 @@ const TEXT = {
   restoreTodo: "\u6062\u590d\u5f85\u529e",
   markDone: "\u6807\u8bb0\u5b8c\u6210",
   delete: "\u5220\u9664",
+  weekAgendaTitle: "\u5177\u4f53\u65e5\u7a0b\u5b89\u6392",
+  openDayDetail: "\u6253\u5f00\u5f53\u5929\u8be6\u60c5",
+  noScheduleYet: "\u8fd9\u4e00\u5929\u8fd8\u6ca1\u6709\u65e5\u7a0b\u5b89\u6392\u3002",
   scheduleDone: "\u5df2\u5b8c\u6210",
   todayCheckin: "\u4eca\u5929\u6253\u5361",
   todaySchedule: "\u4eca\u5929\u65e5\u7a0b",
@@ -392,6 +395,15 @@ function renderWeekBoard() {
   el.nextMonthButton.textContent = TEXT.nextWeek;
 
   const weekDates = getWeekDates(calendarCursor);
+  const weekDateKeys = weekDates.map((date) => getDateKey(date));
+  const todayKey = getDateKey(new Date());
+  const detailDateKey = weekDateKeys.includes(selectedDateKey)
+    ? selectedDateKey
+    : weekDateKeys.includes(todayKey)
+      ? todayKey
+      : weekDateKeys[0];
+
+  selectedDateKey = detailDateKey;
   el.calendarMonthLabel.textContent = `${formatShortDate(weekDates[0])} - ${formatShortDate(weekDates[6])}`;
   el.weekBoard.innerHTML = "";
 
@@ -447,12 +459,77 @@ function renderWeekBoard() {
     dayCard.addEventListener("click", () => {
       selectedDateKey = dateKey;
       renderWeekBoard();
-      openDaySheet(dateKey);
     });
     grid.appendChild(dayCard);
   });
 
   el.weekBoard.appendChild(grid);
+  el.weekBoard.appendChild(createWeekAgendaPanel(detailDateKey));
+}
+
+function createWeekAgendaPanel(dateKey) {
+  const panel = document.createElement("section");
+  const head = document.createElement("div");
+  const titleWrap = document.createElement("div");
+  const kicker = document.createElement("p");
+  const title = document.createElement("h3");
+  const actionButton = createActionButton(TEXT.openDayDetail, "button-ghost", () => {
+    openDaySheet(dateKey);
+  });
+  const list = document.createElement("div");
+  const schedules = getEntriesForDate(dateKey).filter((entry) => entry.kind === "schedule");
+
+  panel.className = "week-detail-panel";
+  head.className = "panel-head compact-head";
+  titleWrap.className = "week-detail-title";
+  kicker.className = "panel-kicker";
+  kicker.textContent = formatDateLabel(dateKey);
+  title.textContent = TEXT.weekAgendaTitle;
+  list.className = "list";
+
+  titleWrap.appendChild(kicker);
+  titleWrap.appendChild(title);
+  head.appendChild(titleWrap);
+  head.appendChild(actionButton);
+  panel.appendChild(head);
+
+  if (!schedules.length) {
+    appendEmptyMessage(list, TEXT.noScheduleYet);
+    panel.appendChild(list);
+    return panel;
+  }
+
+  schedules.forEach((entry) => {
+    const fragment = el.detailItemTemplate.content.cloneNode(true);
+    const card = fragment.querySelector(".detail-item");
+    const type = fragment.querySelector(".detail-type");
+    const titleEl = fragment.querySelector(".schedule-title");
+    const dateEl = fragment.querySelector(".schedule-date");
+    const note = fragment.querySelector(".schedule-note");
+    const actions = fragment.querySelector(".detail-actions");
+
+    if (entry.done) {
+      card.classList.add("is-done");
+    }
+
+    type.textContent = TEXT.scheduleType;
+    type.className = "detail-type is-schedule";
+    titleEl.textContent = entry.title;
+    dateEl.textContent = entry.timeLabel;
+    note.textContent = entry.note || TEXT.noNote;
+
+    actions.appendChild(createActionButton(entry.done ? TEXT.restoreTodo : TEXT.markDone, "button-ghost", () => {
+      toggleSchedule(entry.id);
+    }));
+    actions.appendChild(createActionButton(TEXT.delete, "button-danger", () => {
+      deleteSchedule(entry.id);
+    }));
+
+    list.appendChild(fragment);
+  });
+
+  panel.appendChild(list);
+  return panel;
 }
 
 function renderDaySheet() {

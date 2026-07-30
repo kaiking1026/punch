@@ -250,6 +250,14 @@ button {
   margin-bottom: 0;
 }
 
+.calendar-board-panel {
+  padding: 14px;
+}
+
+.calendar-board-panel .calendar-head {
+  margin-bottom: 10px;
+}
+
 .today-overview {
   display: grid;
   gap: 10px;
@@ -387,38 +395,41 @@ button {
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 8px;
+  gap: 1px;
+  background: rgba(129, 104, 86, 0.14);
+  border: 1px solid rgba(129, 104, 86, 0.14);
+  overflow: hidden;
 }
 
 .calendar-weekdays span {
+  padding: 8px 4px;
+  background: rgba(255, 250, 245, 0.96);
   text-align: center;
   color: var(--muted);
   font-size: 13px;
 }
 
 .calendar-cell {
-  min-height: 118px;
+  min-height: 132px;
   padding: 0 8px 8px;
-  border-radius: 10px;
-  border: 1px solid rgba(129, 104, 86, 0.2);
-  background: rgba(255, 255, 255, 0.72);
+  border-radius: 0;
+  border: 0;
+  background: rgba(255, 255, 255, 0.92);
   text-align: left;
 }
 
 .calendar-cell.is-today {
-  border-color: rgba(243, 108, 79, 0.75);
   background: rgba(255, 247, 243, 0.9);
+  box-shadow: inset 0 0 0 2px rgba(243, 108, 79, 0.75);
 }
 
 .calendar-cell.is-selected {
   background: rgba(255, 242, 238, 0.96);
-  box-shadow: none;
+  box-shadow: inset 0 0 0 2px rgba(243, 108, 79, 0.22);
 }
 
 .calendar-cell-blank {
-  border-style: solid;
-  border-color: rgba(129, 104, 86, 0.08);
-  background: rgba(255, 255, 255, 0.24);
+  background: rgba(255, 248, 243, 0.72);
 }
 
 .calendar-day-number {
@@ -479,12 +490,28 @@ button {
 .week-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 8px;
+  gap: 1px;
   width: 100%;
+  background: rgba(129, 104, 86, 0.14);
+  border: 1px solid rgba(129, 104, 86, 0.14);
+  overflow: hidden;
+}
+
+.week-detail-panel {
+  margin-top: 12px;
+  padding: 14px;
+  border-radius: 20px;
+  border: 1px solid rgba(129, 104, 86, 0.14);
+  background: rgba(255, 252, 248, 0.9);
+}
+
+.week-detail-title h3 {
+  margin: 0;
+  font-size: 18px;
 }
 
 .week-calendar-cell {
-  min-height: 132px;
+  min-height: 156px;
 }
 
 .week-day-head {
@@ -875,21 +902,25 @@ button {
   }
 
   .calendar-cell {
-    min-height: 100px;
-    padding: 0 8px 8px;
+    min-height: 112px;
+    padding: 0 6px 8px;
   }
 
   .calendar-weekdays,
   .calendar-grid {
-    gap: 6px;
+    gap: 1px;
   }
 
   .week-grid {
     grid-template-columns: repeat(7, minmax(0, 1fr));
   }
 
+  .week-detail-panel {
+    padding: 12px;
+  }
+
   .week-calendar-cell {
     min-height: 140px;
-    padding: 0 8px 8px;
+    padding: 0 6px 8px;
   }
 }
